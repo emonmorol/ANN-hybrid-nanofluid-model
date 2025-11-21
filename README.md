@@ -18,19 +18,25 @@ This project implements a **traditional Artificial Neural Network (ANN)** traine
 
 ```
 ann-hybrid-flow/
-├── data/                          # Generated datasets
-│   ├── training_data.csv         # Training dataset
-│   └── test_data.csv             # Test dataset
-├── models/                        # Model implementations
+├── ANN_task_eta_mapping/          # [NEW] Dedicated task: Eta -> f, theta
+│   ├── data/                     # Task-specific data
+│   ├── models/                   # Task-specific models
+│   ├── plots/                    # Task-specific plots
+│   ├── generate_task_data.py     # Data generation
+│   ├── train_task_model.py       # Model training
+│   ├── test_task_model.py        # Testing & plotting
+│   └── manual_check.py           # Manual verification tool
+├── data/                          # Full project datasets
+├── models/                        # Shared model implementations
 │   ├── ann.py                    # ANN architecture
 │   ├── lm_optimizer.py           # Levenberg-Marquardt optimizer
 │   └── checkpoints/              # Saved models and scalers
 ├── solver/                        # Numerical ODE solver
 │   └── ode_solver.py             # BVP solver for ground truth
 ├── plots/                         # Generated figures
-├── generate_data.py              # Dataset generation script
-├── train_ann.py                  # Training pipeline
-├── plot_results.py               # Visualization script
+├── generate_data.py              # Full dataset generation script
+├── train_ann.py                  # Full training pipeline
+├── validate_model.py             # Full validation script
 ├── requirements.txt              # Python dependencies
 └── README.md                     # This file
 ```
@@ -118,49 +124,51 @@ Required packages:
 
 ## Usage
 
-### Step 1: Generate Training Data
+### 1. Specific Task: Eta Mapping (Recommended Start)
+For the specific task of mapping `eta` to `f` and `theta` (Base Case), use the dedicated folder:
 
-Generate ground-truth numerical solutions across the parameter space:
-
+**Generate Data:**
 ```bash
-python generate_data.py
+python ANN_task_eta_mapping/generate_task_data.py
 ```
 
-**What it does:**
-- Solves the ODE system for 81 parameter combinations (3×3×3×3)
-- Generates 400 points per case (η ∈ [0, 10])
-- Saves to `data/training_data.csv` (~32,400 samples)
-- Also generates 10 random test cases
-
-**Output:**
-```
-data/training_data.csv  # Main dataset
-data/test_data.csv      # Additional test cases
+**Train Model:**
+```bash
+python ANN_task_eta_mapping/train_task_model.py
 ```
 
-**Expected runtime:** ~5-10 minutes
+**Test & Plot:**
+```bash
+python ANN_task_eta_mapping/test_task_model.py
+```
+
+**Manual Check:**
+```bash
+python ANN_task_eta_mapping/manual_check.py
+```
 
 ---
 
-### Step 2: Train the ANN Model
+### 2. Full Project Workflow
+For the complete parameter sweep and advanced training:
 
-Train the ANN using Levenberg-Marquardt optimization:
-
+**Step 1: Generate Full Training Data**
 ```bash
-**What it does:**
-- Loads trained model
-- Generates velocity and temperature profiles
-- Compares ANN predictions with numerical solutions
-- Plots skin friction and Nusselt number variations
+python generate_data.py
+```
+*Generates ~32,400 samples across 81 parameter combinations.*
 
-**Output:**
+**Step 2: Train Full Model**
+```bash
+python train_ann.py
 ```
-plots/velocity_profile_M.png        # f'(η) for varying M
-plots/temperature_profile_Nr.png    # θ(η) for varying Nr
-plots/ann_vs_numerical.png          # ANN vs numerical comparison
-plots/cf_vs_M.png                   # Skin friction vs M
-plots/nu_vs_Nr.png                  # Nusselt number vs Nr
+*Trains the model on the full dataset using L-BFGS or LM optimization.*
+
+**Step 3: Validate Model**
+```bash
+python validate_model.py
 ```
+*Performs comprehensive validation against numerical ground truth.*
 
 ---
 
@@ -173,12 +181,7 @@ Input Layer:     1 neuron  (η)
                  ↓
 Hidden Layer 1:  30 neurons (tanh)
 Hidden Layer 2:  30 neurons (tanh)
-Hidden Layer 3:  30 neurons (tanh)
-Hidden Layer 4:  30 neurons (tanh)
-Hidden Layer 5:  30 neurons (tanh)
-Hidden Layer 6:  30 neurons (tanh)
-Hidden Layer 7:  30 neurons (tanh)
-Hidden Layer 8:  30 neurons (tanh)
+...
 Hidden Layer 9:  30 neurons (tanh)
                  ↓
 Output Layer:    2 neurons  (f, θ)
@@ -219,81 +222,6 @@ where:
 
 ---
 
-### Step 4: Validate Model Accuracy
-
-Validate the ANN predictions against numerical solutions:
-
-```bash
-python validate_model.py
-```
-
-**What it does:**
-- Compares ANN predictions with numerical ground truth
-- Computes comprehensive error metrics (MSE, MAE, RMSE, R², etc.)
-- Generates validation plots with error analysis
-- Creates manuscript-style validation tables
-- Tests multiple parameter combinations
-
-**Output:**
-```
-plots/validation_single_case.png    # Detailed validation plots
-plots/validation_summary.csv        # Metrics table for multiple cases
-```
-
-**Expected Accuracy:**
-- R² > 0.9999 (near-perfect fit)
-- MSE < 1e-6 (excellent)
-- MAE < 1e-4 (very good)
-- Max Error < 1e-3 (acceptable)
-
-**For detailed validation methodology, see:** [`VALIDATION_GUIDE.md`](VALIDATION_GUIDE.md)
-
----
-
-## Results & Validation
-
-### Expected Performance
-
-**Test Set Metrics:**
-- MSE (f): < 1e-6
-- MSE (θ): < 1e-6
-- MAE (overall): < 1e-4
-- Max Error: < 1e-3
-- R² > 0.9999
-
-### Validation Methodology
-
-The model is validated using **manuscript-style code validation**:
-
-1. **Numerical Comparison**: ANN predictions vs. ODE solutions
-2. **Error Metrics**: MSE, RMSE, MAE, Max Error, Relative Error, R²
-3. **Visual Validation**: Overlaid plots, scatter plots, error distributions
-4. **Statistical Analysis**: Correlation coefficients, goodness of fit
-5. **Multiple Test Cases**: Various parameter combinations
-
-See [`VALIDATION_GUIDE.md`](VALIDATION_GUIDE.md) for complete details.
-
-### Validation Checks
-
-1. **Boundary Conditions:**
-   - f(0) ≈ 0
-   - f'(0) ≈ 1 + β·f''(0)
-   - f'(∞) ≈ 1
-   - θ(∞) ≈ 0
-
-2. **Physical Consistency:**
-   - Monotonic velocity profiles
-   - Decaying temperature profiles
-   - Positive skin friction
-   - Positive Nusselt number
-
-3. **Parameter Trends:**
-   - Increasing M → decreased velocity
-   - Increasing Nr → enhanced heat transfer
-   - Increasing Nh → modified thermal boundary layer
-
----
-
 ## Troubleshooting
 
 ### Common Issues
@@ -318,91 +246,25 @@ Solution: Reduce batch_size in train_ann.py
 Current: 2000 → Try: 1000 or 500
 ```
 
-**4. Plots Not Generated:**
-```
-Solution: Ensure model is trained first
-Run: python train_ann.py before python plot_results.py
-```
-
 ---
 
 ## File Descriptions
 
+### Task Specific (`ANN_task_eta_mapping/`)
+- **`generate_task_data.py`**: Generates single-case data for eta mapping.
+- **`train_task_model.py`**: Trains the specific model for eta -> f, theta.
+- **`test_task_model.py`**: Generates plots and metrics for the task.
+- **`manual_check.py`**: Interactive tool for verifying specific values.
+
 ### Core Scripts
-
-**`generate_data.py`**
-- Generates numerical solutions using scipy.integrate.solve_bvp
-- Creates training and test datasets
-- Handles parameter grid generation
-
-**`train_ann.py`**
-- Implements training pipeline
-- Data loading and preprocessing
-- Model training with LM optimizer
-- Evaluation and checkpointing
-
-**`plot_results.py`**
-- Visualization module
-- Manuscript-style figure generation
-- ANN vs numerical comparison
+- **`generate_data.py`**: Generates full numerical solutions.
+- **`train_ann.py`**: Full training pipeline.
+- **`validate_model.py`**: Comprehensive validation.
 
 ### Model Files
-
-**`models/ann.py`**
-- ANN architecture definition
-- Forward pass implementation
-- Automatic differentiation support
-
-**`models/lm_optimizer.py`**
-- Custom LM optimizer (PyTorch)
-- Scipy wrapper for LM
-- Jacobian computation
-
-**`solver/ode_solver.py`**
-- Numerical ODE solver
-- Boundary condition implementation
-- Engineering quantity computation
-
----
-
-## Extending the Project
-
-### Add New Parameters
-
-1. Modify `generate_data.py`:
-```python
-new_param_values = [value1, value2, value3]
-# Add to parameter grid generation
-```
-
-2. Update solver in `solver/ode_solver.py`:
-```python
-self.new_param = params.get('new_param', default_value)
-# Include in ODE equations
-```
-
-### Change ANN Architecture
-
-Edit `models/ann.py`:
-```python
-model = HybridNanofluidANN(
-    input_dim=1,
-    hidden_dim=50,        # Change neurons per layer
-    num_hidden_layers=12, # Change number of layers
-    output_dim=2
-)
-```
-
-### Use Different Optimizer
-
-In `train_ann.py`:
-```python
-# Option 1: Custom LM
-trainer = Trainer(model, optimizer_type='lm_custom')
-
-# Option 2: Scipy LM (recommended)
-trainer = Trainer(model, optimizer_type='lm_scipy')
-```
+- **`models/ann.py`**: ANN architecture definition.
+- **`models/lm_optimizer.py`**: Custom LM optimizer.
+- **`solver/ode_solver.py`**: Numerical ODE solver.
 
 ---
 
@@ -422,24 +284,14 @@ This project is for academic and research purposes.
 
 ---
 
-## Contact
-
-For questions or issues:
-- Check the troubleshooting section
-- Review the manuscript for physical model details
-- Verify all dependencies are installed correctly
-
----
-
 ## Acknowledgments
 
 - Numerical solver: scipy.integrate.solve_bvp
 - Deep learning framework: PyTorch
 - Optimization: Levenberg-Marquardt algorithm
-- Manuscript: [Reference to be added]
 
 ---
 
 **Last Updated:** 2025-11-21
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Status:** ✅ Complete and tested

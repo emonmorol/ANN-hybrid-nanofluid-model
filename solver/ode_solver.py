@@ -115,7 +115,7 @@ class HybridNanofluidSolver:
         
         # Boundary conditions at η = 0
         bc[0] = ya[0]  # f(0) = 0
-        bc[1] = ya[1] - (1.0 + self.beta * ya[2])  # f'(0) = 1 + β*f''(0)
+        bc[1] = ya[1] - (self.lam + self.beta * ya[2])  # f'(0) = lam + β*f''(0)
         bc[2] = ya[4] + self.Nh * (1.0 - ya[3])  # θ'(0) = -Nh*(1 - θ(0))
         
         # Boundary conditions at η → ∞
