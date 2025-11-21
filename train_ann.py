@@ -4,7 +4,9 @@ Implements training, validation, and testing with LM optimizer
 """
 
 import torch
+import torch
 import torch.nn as nn
+import torch.optim as optim
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -126,6 +128,15 @@ class Trainer:
             self.optimizer = LevenbergMarquardtOptimizer(model)
         elif optimizer_type == 'lm_scipy':
             self.optimizer = SimplifiedLMOptimizer(model)
+        elif optimizer_type == 'adam':
+            self.optimizer = optim.Adam(model.parameters(), lr=0.001)
+        elif optimizer_type == 'lbfgs':
+            # L-BFGS with strong default parameters for convergence
+            self.optimizer = optim.LBFGS(model.parameters(), 
+                                        lr=1, 
+                                        max_iter=20, 
+                                        history_size=100,
+                                        line_search_fn='strong_wolfe')
         else:
             raise ValueError(f"Unknown optimizer type: {optimizer_type}")
         
@@ -185,6 +196,65 @@ class Trainer:
             loss = self.compute_loss(predictions, y_train)
         
         return loss
+
+    def train_epoch_lbfgs(self, X_train: torch.Tensor, y_train: torch.Tensor) -> float:
+        """
+        Train one epoch using L-BFGS optimizer (Full Batch)
+        """
+        self.model.train()
+        X_train = X_train.to(self.device)
+        y_train = y_train.to(self.device)
+        
+        # Define closure for L-BFGS (re-evaluates loss)
+        def closure():
+            self.optimizer.zero_grad()
+            predictions = self.model(X_train)
+            loss = torch.nn.MSELoss()(predictions, y_train)
+            loss.backward()
+            
+            # Optional: Print progress inside the step for visibility
+            print(f"\r    L-BFGS Loss: {loss.item():.6f}", end="")
+            return loss
+
+        # Perform optimization step
+        self.optimizer.step(closure)
+        
+        # Return final loss
+        with torch.no_grad():
+            pred = self.model(X_train)
+            loss = self.compute_loss(pred, y_train)
+            
+        return loss
+
+    def train_epoch_standard(self, X_train: torch.Tensor, y_train: torch.Tensor,
+                           batch_size: int = 64) -> float:
+        """
+        Train one epoch using standard optimizer (Adam, SGD, etc.)
+        """
+        self.model.train()
+        total_loss = 0.0
+        n_batches = 0
+        
+        # Process in batches
+        n_samples = len(X_train)
+        indices = torch.randperm(n_samples)
+        
+        for i in range(0, n_samples, batch_size):
+            batch_indices = indices[i:i + batch_size]
+            X_batch = X_train[batch_indices].to(self.device)
+            y_batch = y_train[batch_indices].to(self.device)
+            
+            # Standard optimization step
+            self.optimizer.zero_grad()
+            predictions = self.model(X_batch)
+            loss = torch.nn.MSELoss()(predictions, y_batch)
+            loss.backward()
+            self.optimizer.step()
+            
+            total_loss += loss.item()
+            n_batches += 1
+        
+        return total_loss / n_batches
     
     def validate(self, X_val: torch.Tensor, y_val: torch.Tensor) -> float:
         """Validate model"""
@@ -223,8 +293,13 @@ class Trainer:
             if self.optimizer_type == 'lm_custom':
                 train_loss = self.train_epoch_custom(X_train, y_train, 
                                                      batch_size=batch_size, max_steps=5)
-            else:
+            elif self.optimizer_type == 'lm_scipy':
                 train_loss = self.train_epoch_scipy(X_train, y_train, max_nfev=50)
+            elif self.optimizer_type == 'lbfgs':
+                # L-BFGS uses full batch
+                train_loss = self.train_epoch_lbfgs(X_train, y_train)
+            else:
+                train_loss = self.train_epoch_standard(X_train, y_train, batch_size=batch_size)
             
             # Validate
             val_loss = self.validate(X_val, y_val)
@@ -379,14 +454,21 @@ def main():
     print(model.get_architecture_summary())
     
     # Create trainer
-    trainer = Trainer(model, optimizer_type='lm_scipy', device='cpu')
+    # Create trainer
+    # Use 'lbfgs' for high-precision convergence
+    print("Using L-BFGS optimizer...")
+    trainer = Trainer(model, optimizer_type='lbfgs', device='cpu')
     
     # Train model
+    # L-BFGS prefers full batch training
+    full_batch_size = len(data['X_train'])
+    print(f"Training with full batch size: {full_batch_size}")
+    
     history = trainer.train(
         data['X_train'], data['y_train'],
         data['X_val'], data['y_val'],
         epochs=100,
-        batch_size=2000,
+        batch_size=full_batch_size,
         early_stopping_patience=20
     )
     

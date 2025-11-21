@@ -147,42 +147,6 @@ data/test_data.csv      # Additional test cases
 Train the ANN using Levenberg-Marquardt optimization:
 
 ```bash
-python train_ann.py
-```
-
-**What it does:**
-- Loads and normalizes the dataset
-- Splits data: 80% train, 10% validation, 10% test
-- Trains 9-layer ANN (30 neurons/layer) with tanh activation
-- Uses Levenberg-Marquardt optimizer (scipy implementation)
-- Implements early stopping (patience = 20 epochs)
-- Saves best model and scalers
-
-**Output:**
-```
-models/checkpoints/best_model.pth       # Trained model
-models/checkpoints/scaler_*.pkl         # Normalization scalers
-plots/training_history.png              # Loss curves
-```
-
-**Expected runtime:** ~10-30 minutes (depends on convergence)
-
-**Training Configuration:**
-- Epochs: 100 (with early stopping)
-- Batch size: 2000
-- Optimizer: Levenberg-Marquardt (scipy)
-- Loss: MSE on [f, θ]
-
----
-
-### Step 3: Generate Plots
-
-Create manuscript-style visualizations:
-
-```bash
-python plot_results.py
-```
-
 **What it does:**
 - Loads trained model
 - Generates velocity and temperature profiles
@@ -255,15 +219,59 @@ where:
 
 ---
 
+### Step 4: Validate Model Accuracy
+
+Validate the ANN predictions against numerical solutions:
+
+```bash
+python validate_model.py
+```
+
+**What it does:**
+- Compares ANN predictions with numerical ground truth
+- Computes comprehensive error metrics (MSE, MAE, RMSE, R², etc.)
+- Generates validation plots with error analysis
+- Creates manuscript-style validation tables
+- Tests multiple parameter combinations
+
+**Output:**
+```
+plots/validation_single_case.png    # Detailed validation plots
+plots/validation_summary.csv        # Metrics table for multiple cases
+```
+
+**Expected Accuracy:**
+- R² > 0.9999 (near-perfect fit)
+- MSE < 1e-6 (excellent)
+- MAE < 1e-4 (very good)
+- Max Error < 1e-3 (acceptable)
+
+**For detailed validation methodology, see:** [`VALIDATION_GUIDE.md`](VALIDATION_GUIDE.md)
+
+---
+
 ## Results & Validation
 
 ### Expected Performance
 
 **Test Set Metrics:**
-- MSE (f): < 1e-4
-- MSE (θ): < 1e-4
-- MAE (overall): < 1e-3
-- Max Error: < 1e-2
+- MSE (f): < 1e-6
+- MSE (θ): < 1e-6
+- MAE (overall): < 1e-4
+- Max Error: < 1e-3
+- R² > 0.9999
+
+### Validation Methodology
+
+The model is validated using **manuscript-style code validation**:
+
+1. **Numerical Comparison**: ANN predictions vs. ODE solutions
+2. **Error Metrics**: MSE, RMSE, MAE, Max Error, Relative Error, R²
+3. **Visual Validation**: Overlaid plots, scatter plots, error distributions
+4. **Statistical Analysis**: Correlation coefficients, goodness of fit
+5. **Multiple Test Cases**: Various parameter combinations
+
+See [`VALIDATION_GUIDE.md`](VALIDATION_GUIDE.md) for complete details.
 
 ### Validation Checks
 
