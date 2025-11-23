@@ -1,8 +1,4 @@
-"""
-Model Validation Script
-Comprehensive validation of ANN predictions against numerical solutions
-Following manuscript-style code validation approach
-"""
+
 
 import numpy as np
 import pandas as pd
@@ -20,19 +16,10 @@ from src.solver.ode_solver import HybridNanofluidSolver
 
 
 class ModelValidator:
-    """Validate ANN model predictions against numerical solutions"""
+
     
     def __init__(self, model_path: str, scaler_dir: str):
-        """
-        Initialize validator
-        
-        Parameters:
-        -----------
-        model_path : str
-            Path to trained model checkpoint
-        scaler_dir : str
-            Directory containing saved scalers
-        """
+
         # Load model
         self.model = HybridNanofluidANN(input_dim=1, hidden_dim=30, 
                                         num_hidden_layers=9, output_dim=2)
@@ -52,13 +39,7 @@ class ModelValidator:
         print("✓ Model and scalers loaded for validation")
     
     def predict(self, eta: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Predict f and θ for given η values
-        
-        Returns:
-        --------
-        f, theta : np.ndarray
-        """
+
         # Normalize eta
         eta_normalized = self.scaler_eta.transform(eta.reshape(-1, 1))
         
@@ -74,14 +55,7 @@ class ModelValidator:
         return f, theta
     
     def compute_error_metrics(self, y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
-        """
-        Compute comprehensive error metrics
-        
-        Returns:
-        --------
-        metrics : dict
-            Dictionary containing various error metrics
-        """
+
         # Absolute errors
         abs_error = np.abs(y_true - y_pred)
         
@@ -126,21 +100,7 @@ class ModelValidator:
         }
     
     def validate_single_case(self, params: Dict, verbose: bool = True) -> Dict:
-        """
-        Validate ANN predictions for a single parameter case
-        
-        Parameters:
-        -----------
-        params : dict
-            Physical parameters for the case
-        verbose : bool
-            Print detailed results
-        
-        Returns:
-        --------
-        results : dict
-            Validation results including metrics and predictions
-        """
+
         # Solve numerically
         solver = HybridNanofluidSolver(params)
         eta_num, solution_num = solver.solve(verbose=False)
@@ -188,19 +148,7 @@ class ModelValidator:
         }
     
     def validate_multiple_cases(self, test_cases: List[Dict]) -> pd.DataFrame:
-        """
-        Validate ANN predictions for multiple parameter cases
-        
-        Parameters:
-        -----------
-        test_cases : list of dict
-            List of parameter dictionaries to test
-        
-        Returns:
-        --------
-        summary_df : pd.DataFrame
-            Summary table of validation metrics
-        """
+
         print("\n" + "="*70)
         print("VALIDATING MULTIPLE TEST CASES")
         print("="*70)
@@ -261,16 +209,7 @@ class ModelValidator:
         return summary_df
     
     def plot_validation_results(self, result: Dict, save_path: str = None):
-        """
-        Create comprehensive validation plots for a single case
-        
-        Parameters:
-        -----------
-        result : dict
-            Validation result from validate_single_case()
-        save_path : str
-            Path to save the plot
-        """
+
         eta = result['eta']
         f_num = result['f_numerical']
         f_ann = result['f_ann']
@@ -396,7 +335,7 @@ class ModelValidator:
 
 
 def main():
-    """Main validation execution"""
+
     print("="*70)
     print("ANN MODEL VALIDATION")
     print("="*70)

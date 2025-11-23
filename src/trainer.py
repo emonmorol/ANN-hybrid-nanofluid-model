@@ -1,6 +1,4 @@
-"""
-Model Training Module
-"""
+
 
 import torch
 import torch.nn as nn
@@ -16,24 +14,11 @@ from src.models.lm_optimizer import LevenbergMarquardtOptimizer, SimplifiedLMOpt
 from src.visualizer import RealTimeVisualizer
 
 class Trainer:
-    """Training manager for ANN model"""
+
     
     def __init__(self, model: nn.Module, optimizer_type: str = 'lm_custom',
                  device: str = 'cpu', visualize: bool = False):
-        """
-        Initialize trainer
-        
-        Parameters:
-        -----------
-        model : nn.Module
-            ANN model
-        optimizer_type : str
-            'lm_custom' or 'lm_scipy'
-        device : str
-            'cpu' or 'cuda'
-        visualize : bool
-            Enable real-time visualization
-        """
+
         self.model = model.to(device)
         self.device = device
         self.optimizer_type = optimizer_type
@@ -46,17 +31,6 @@ class Trainer:
         # Initialize optimizer
         if optimizer_type == 'lm_custom':
             self.optimizer = LevenbergMarquardtOptimizer(model)
-        elif optimizer_type == 'lm_scipy':
-            self.optimizer = SimplifiedLMOptimizer(model)
-        elif optimizer_type == 'adam':
-            self.optimizer = optim.Adam(model.parameters(), lr=0.001)
-        elif optimizer_type == 'lbfgs':
-            # L-BFGS with strong default parameters for convergence
-            self.optimizer = optim.LBFGS(model.parameters(), 
-                                        lr=1, 
-                                        max_iter=20, 
-                                        history_size=100,
-                                        line_search_fn='strong_wolfe')
         else:
             raise ValueError(f"Unknown optimizer type: {optimizer_type}")
         
@@ -68,15 +42,13 @@ class Trainer:
         }
     
     def compute_loss(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
-        """Compute MSE loss"""
+
         mse = torch.mean((predictions - targets) ** 2)
         return mse.item()
     
     def train_epoch_custom(self, X_train: torch.Tensor, y_train: torch.Tensor,
                           batch_size: int = 1000, max_steps: int = 10) -> float:
-        """
-        Train one epoch using custom LM optimizer
-        """
+
         self.model.train()
         total_loss = 0.0
         n_batches = 0
@@ -101,88 +73,9 @@ class Trainer:
         
         return total_loss / n_batches
     
-    def train_epoch_scipy(self, X_train: torch.Tensor, y_train: torch.Tensor,
-                         max_nfev: int = 50) -> float:
-        """
-        Train one epoch using scipy LM optimizer
-        """
-        self.model.train()
-        
-        result = self.optimizer.optimize(X_train, y_train, max_nfev=max_nfev, verbose=0)
-        
-        # Compute final loss
-        with torch.no_grad():
-            predictions = self.model(X_train)
-            loss = self.compute_loss(predictions, y_train)
-        
-        return loss
-
-    def train_epoch_lbfgs(self, X_train: torch.Tensor, y_train: torch.Tensor, 
-                         X_val: torch.Tensor = None, y_val: torch.Tensor = None) -> float:
-        """
-        Train one epoch using L-BFGS optimizer (Full Batch)
-        """
-        self.model.train()
-        X_train = X_train.to(self.device)
-        y_train = y_train.to(self.device)
-        
-        if self.visualize and X_val is not None:
-            X_vis = X_val.cpu().numpy()
-            y_vis = y_val.cpu().numpy()
-        
-        # Define closure for L-BFGS (re-evaluates loss)
-        def closure():
-            self.optimizer.zero_grad()
-            predictions = self.model(X_train)
-            loss = torch.nn.MSELoss()(predictions, y_train)
-            loss.backward()
-            
-            # Optional: Print progress inside the step for visibility
-            print(f"\r    L-BFGS Loss: {loss.item():.6f}", end="")
-            
-            if self.visualize and X_val is not None:
-                self.iteration_count += 1
-                if self.iteration_count % 5 == 0:
-                    with torch.no_grad():
-                        val_pred = self.model(X_val.to(self.device))
-                        val_loss = nn.MSELoss()(val_pred, y_val.to(self.device)).item()
-                        pred_np = val_pred.cpu().numpy()
-                        
-                        self.visualizer.update_plots(
-                            self.iteration_count,
-                            loss.item(),
-                            val_loss,
-                            X_vis,
-                            y_vis[:, 0],
-                            pred_np[:, 0],
-                            y_vis[:, 1],
-                            pred_np[:, 1],
-                            self.model
-                        )
-                    
-                    # Memory Management
-                    if self.iteration_count % 50 == 0:
-                        gc.collect()
-                        if torch.cuda.is_available():
-                            torch.cuda.empty_cache()
-            
-            return loss
-
-        # Perform optimization step
-        self.optimizer.step(closure)
-        
-        # Return final loss
-        with torch.no_grad():
-            pred = self.model(X_train)
-            loss = self.compute_loss(pred, y_train)
-            
-        return loss
-
     def train_epoch_standard(self, X_train: torch.Tensor, y_train: torch.Tensor,
                            batch_size: int = 64) -> float:
-        """
-        Train one epoch using standard optimizer (Adam, SGD, etc.)
-        """
+
         self.model.train()
         total_loss = 0.0
         n_batches = 0
@@ -209,7 +102,7 @@ class Trainer:
         return total_loss / n_batches
     
     def validate(self, X_val: torch.Tensor, y_val: torch.Tensor) -> float:
-        """Validate model"""
+
         self.model.eval()
         
         with torch.no_grad():
@@ -224,14 +117,7 @@ class Trainer:
               X_val: torch.Tensor, y_val: torch.Tensor,
               epochs: int = 100, batch_size: int = 1000,
               early_stopping_patience: int = 20) -> dict:
-        """
-        Full training loop
-        
-        Returns:
-        --------
-        history : dict
-            Training history
-        """
+
         print(f"\nTraining with {self.optimizer_type} optimizer")
         print("=" * 70)
         
@@ -245,11 +131,6 @@ class Trainer:
             if self.optimizer_type == 'lm_custom':
                 train_loss = self.train_epoch_custom(X_train, y_train, 
                                                      batch_size=batch_size, max_steps=5)
-            elif self.optimizer_type == 'lm_scipy':
-                train_loss = self.train_epoch_scipy(X_train, y_train, max_nfev=50)
-            elif self.optimizer_type == 'lbfgs':
-                # L-BFGS uses full batch
-                train_loss = self.train_epoch_lbfgs(X_train, y_train, X_val, y_val)
             else:
                 train_loss = self.train_epoch_standard(X_train, y_train, batch_size=batch_size)
             
@@ -294,14 +175,7 @@ class Trainer:
         return self.history
     
     def evaluate(self, X_test: torch.Tensor, y_test: torch.Tensor) -> dict:
-        """
-        Evaluate model on test set
-        
-        Returns:
-        --------
-        metrics : dict
-            Evaluation metrics
-        """
+
         self.model.eval()
         
         with torch.no_grad():
@@ -339,7 +213,7 @@ class Trainer:
         return metrics
     
     def save_model(self, path: str):
-        """Save model checkpoint"""
+
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'history': self.history
@@ -347,7 +221,7 @@ class Trainer:
         print(f"✓ Model saved to {path}")
     
     def load_model(self, path: str):
-        """Load model checkpoint"""
+
         checkpoint = torch.load(path)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.history = checkpoint['history']

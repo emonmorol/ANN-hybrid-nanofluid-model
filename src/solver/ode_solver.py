@@ -1,7 +1,4 @@
-"""
-Numerical ODE Solver for Hybrid Nanofluid Boundary Layer System
-Implements equations 8-10 from the manuscript using scipy.integrate.solve_bvp
-"""
+
 
 import numpy as np
 from scipy.integrate import solve_bvp
@@ -11,34 +8,10 @@ warnings.filterwarnings('ignore')
 
 
 class HybridNanofluidSolver:
-    """
-    Solves the coupled ODE system for hybrid nanofluid flow:
-    - Momentum equation (Eq. 8)
-    - Energy equation (Eq. 9)
-    - Boundary conditions (Eq. 10)
-    """
+
     
     def __init__(self, params: Dict[str, float]):
-        """
-        Initialize solver with physical parameters
-        
-        Parameters:
-        -----------
-        params : dict
-            M : Magnetic parameter
-            Nr : Radiation parameter
-            Nh : Convective heat transfer parameter
-            lam : Stretching parameter (λ)
-            beta : Velocity slip parameter (β)
-            Pr : Prandtl number
-            n : Power-law index
-            Tr : Temperature ratio
-            As : Unsteadiness parameter
-            nu_ratio : ν_hnf / ν_f
-            kappa_ratio : κ_hnf / κ_f
-            sigma_ratio : σ_hnf / σ_f
-            rho_ratio : ρ_hnf / ρ_f
-        """
+
         self.M = params.get('M', 1.0)
         self.Nr = params.get('Nr', 0.5)
         self.Nh = params.get('Nh', 0.5)
@@ -59,18 +32,7 @@ class HybridNanofluidSolver:
         self.n_points = params.get('n_points', 400)
         
     def ode_system(self, eta: np.ndarray, y: np.ndarray) -> np.ndarray:
-        """
-        Define the ODE system
-        
-        Variables:
-        y[0] = f
-        y[1] = f'
-        y[2] = f''
-        y[3] = θ
-        y[4] = θ'
-        
-        Returns derivatives: [f', f'', f''', θ', θ'']
-        """
+
         f, fp, fpp, theta, thetap = y
         
         # Momentum equation (Eq. 8): solve for f'''
@@ -99,18 +61,7 @@ class HybridNanofluidSolver:
         return np.vstack([fp, fpp, fppp, thetap, thetapp])
     
     def boundary_conditions(self, ya: np.ndarray, yb: np.ndarray) -> np.ndarray:
-        """
-        Boundary conditions (Eq. 10)
-        
-        At η = 0:
-        - f(0) = 0
-        - f'(0) = 1 + β*f''(0)
-        - θ'(0) = -Nh*(1 - θ(0))
-        
-        At η → ∞:
-        - f'(∞) → 1
-        - θ(∞) → 0
-        """
+
         bc = np.zeros(5)
         
         # Boundary conditions at η = 0
@@ -125,16 +76,7 @@ class HybridNanofluidSolver:
         return bc
     
     def solve(self, verbose: bool = False) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Solve the BVP using scipy.integrate.solve_bvp
-        
-        Returns:
-        --------
-        eta : array
-            Similarity variable grid
-        solution : array
-            Solution array [f, f', f'', θ, θ']
-        """
+
         # Create initial grid
         eta = np.linspace(0, self.eta_max, self.n_points)
         
@@ -167,13 +109,7 @@ class HybridNanofluidSolver:
             return None, None
     
     def compute_derivatives(self, eta: np.ndarray, solution: np.ndarray) -> Dict[str, np.ndarray]:
-        """
-        Extract all variables and derivatives from solution
-        
-        Returns:
-        --------
-        dict with keys: eta, f, fp, fpp, theta, thetap
-        """
+
         return {
             'eta': eta,
             'f': solution[0],
@@ -184,13 +120,7 @@ class HybridNanofluidSolver:
         }
     
     def compute_engineering_quantities(self, solution: np.ndarray) -> Dict[str, float]:
-        """
-        Compute skin friction coefficient and Nusselt number
-        
-        Based on manuscript equations (Eq. 11-12):
-        Cf = f''(0)
-        Nu = -θ'(0)
-        """
+
         fpp_0 = solution[2][0]  # f''(0)
         thetap_0 = solution[4][0]  # θ'(0)
         
@@ -206,7 +136,7 @@ class HybridNanofluidSolver:
 
 
 def test_solver():
-    """Test the solver with default parameters"""
+
     print("Testing Hybrid Nanofluid ODE Solver")
     print("=" * 50)
     

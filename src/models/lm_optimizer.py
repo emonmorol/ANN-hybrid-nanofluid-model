@@ -1,7 +1,4 @@
-"""
-Levenberg-Marquardt Optimizer for PyTorch
-Custom implementation for ANN training
-"""
+
 
 import torch
 import torch.nn as nn
@@ -11,36 +8,12 @@ from torch.func import functional_call, vmap, jacrev
 
 
 class LevenbergMarquardtOptimizer:
-    """
-    Levenberg-Marquardt optimization algorithm for neural network training
-    
-    The LM algorithm is particularly effective for least-squares problems:
-    - Combines gradient descent and Gauss-Newton method
-    - Adaptive damping parameter (λ)
-    - Fast convergence for well-posed problems
-    """
+
     
     def __init__(self, model: nn.Module, lambda_init: float = 1e-3, 
                  lambda_scale_up: float = 10.0, lambda_scale_down: float = 0.1,
                  max_lambda: float = 1e10, min_lambda: float = 1e-10):
-        """
-        Initialize LM optimizer
-        
-        Parameters:
-        -----------
-        model : nn.Module
-            Neural network model
-        lambda_init : float
-            Initial damping parameter
-        lambda_scale_up : float
-            Factor to increase lambda on failed step
-        lambda_scale_down : float
-            Factor to decrease lambda on successful step
-        max_lambda : float
-            Maximum allowed lambda value
-        min_lambda : float
-            Minimum allowed lambda value
-        """
+
         self.model = model
         self.lambda_ = lambda_init
         self.lambda_scale_up = lambda_scale_up
@@ -53,11 +26,11 @@ class LevenbergMarquardtOptimizer:
         self.n_params = sum(p.numel() for p in self.params)
         
     def _params_to_vector(self) -> torch.Tensor:
-        """Convert model parameters to a single vector"""
+
         return torch.cat([p.data.flatten() for p in self.params])
     
     def _vector_to_params(self, vector: torch.Tensor):
-        """Update model parameters from a vector"""
+
         offset = 0
         for p in self.params:
             numel = p.numel()
@@ -65,21 +38,7 @@ class LevenbergMarquardtOptimizer:
             offset += numel
     
     def _compute_jacobian(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """
-        Compute Jacobian matrix using automatic differentiation
-        
-        Parameters:
-        -----------
-        inputs : torch.Tensor
-            Input data (batch_size, input_dim)
-        targets : torch.Tensor
-            Target data (batch_size, output_dim)
-        
-        Returns:
-        --------
-        jacobian : torch.Tensor
-            Jacobian matrix (n_residuals, n_params)
-        """
+
         # Compute residuals
         outputs = self.model(inputs)
         residuals = (outputs - targets).flatten()
@@ -109,10 +68,7 @@ class LevenbergMarquardtOptimizer:
         return jacobian
     
     def _compute_jacobian_efficient(self, inputs: torch.Tensor, targets: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Efficient Jacobian computation using finite differences
-        More stable and faster for large networks
-        """
+
         outputs = self.model(inputs)
         residuals = (outputs - targets).flatten()
         n_residuals = len(residuals)
@@ -143,25 +99,7 @@ class LevenbergMarquardtOptimizer:
     
     def step(self, inputs: torch.Tensor, targets: torch.Tensor, 
              use_efficient: bool = True) -> Tuple[float, bool]:
-        """
-        Perform one LM optimization step
-        
-        Parameters:
-        -----------
-        inputs : torch.Tensor
-            Input data
-        targets : torch.Tensor
-            Target data
-        use_efficient : bool
-            Use efficient Jacobian computation (finite differences)
-        
-        Returns:
-        --------
-        loss : float
-            Current loss value
-        success : bool
-            Whether the step was successful
-        """
+
         # Compute Jacobian and residuals
         if use_efficient:
             J, r = self._compute_jacobian_efficient(inputs, targets)
@@ -214,21 +152,18 @@ class LevenbergMarquardtOptimizer:
 
 
 class SimplifiedLMOptimizer:
-    """
-    Simplified Levenberg-Marquardt using scipy.optimize.least_squares
-    More stable for initial implementation
-    """
+
     
     def __init__(self, model: nn.Module):
         self.model = model
         self.params = list(model.parameters())
         
     def _params_to_vector(self) -> np.ndarray:
-        """Convert model parameters to numpy vector"""
+
         return np.concatenate([p.data.cpu().numpy().flatten() for p in self.params])
     
     def _vector_to_params(self, vector: np.ndarray):
-        """Update model parameters from numpy vector"""
+
         offset = 0
         for p in self.params:
             numel = p.numel()
@@ -237,9 +172,7 @@ class SimplifiedLMOptimizer:
     
     def residuals(self, params_vector: np.ndarray, inputs_np: np.ndarray, 
                   targets_np: np.ndarray) -> np.ndarray:
-        """
-        Compute residuals for scipy.optimize.least_squares
-        """
+
         # Update model parameters
         self._vector_to_params(params_vector)
         
@@ -257,14 +190,7 @@ class SimplifiedLMOptimizer:
     
     def optimize(self, inputs: torch.Tensor, targets: torch.Tensor, 
                  max_nfev: int = 100, verbose: int = 0) -> dict:
-        """
-        Optimize using scipy.optimize.least_squares
-        
-        Returns:
-        --------
-        result : dict
-            Optimization result
-        """
+
         from scipy.optimize import least_squares
         
         # Convert to numpy
@@ -296,7 +222,7 @@ class SimplifiedLMOptimizer:
 
 
 def test_optimizer():
-    """Test LM optimizer"""
+
     print("Testing Levenberg-Marquardt Optimizer")
     print("=" * 60)
     

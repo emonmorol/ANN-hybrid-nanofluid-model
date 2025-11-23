@@ -1,7 +1,3 @@
-"""
-ANN Model Architecture
-9 hidden layers × 30 neurons each with tanh activation
-"""
 
 import torch
 import torch.nn as nn
@@ -9,31 +5,11 @@ import numpy as np
 
 
 class HybridNanofluidANN(nn.Module):
-    """
-    Artificial Neural Network for Hybrid Nanofluid Flow Prediction
-    
-    Architecture:
-    - Input: η (1D)
-    - Hidden: 9 layers × 30 neurons (tanh activation)
-    - Output: [f(η), θ(η)] (2D)
-    """
+
     
     def __init__(self, input_dim: int = 1, hidden_dim: int = 30, 
                  num_hidden_layers: int = 9, output_dim: int = 2):
-        """
-        Initialize ANN architecture
-        
-        Parameters:
-        -----------
-        input_dim : int
-            Input dimension (default: 1 for η)
-        hidden_dim : int
-            Number of neurons per hidden layer (default: 30)
-        num_hidden_layers : int
-            Number of hidden layers (default: 9)
-        output_dim : int
-            Output dimension (default: 2 for [f, θ])
-        """
+
         super(HybridNanofluidANN, self).__init__()
         
         self.input_dim = input_dim
@@ -70,35 +46,10 @@ class HybridNanofluidANN(nn.Module):
                     nn.init.zeros_(module.bias)
     
     def forward(self, eta: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass
-        
-        Parameters:
-        -----------
-        eta : torch.Tensor
-            Input similarity variable (batch_size, 1)
-        
-        Returns:
-        --------
-        output : torch.Tensor
-            Predicted [f, θ] (batch_size, 2)
-        """
         return self.network(eta)
     
     def predict(self, eta: np.ndarray) -> np.ndarray:
-        """
-        Predict for numpy input
-        
-        Parameters:
-        -----------
-        eta : np.ndarray
-            Input similarity variable
-        
-        Returns:
-        --------
-        predictions : np.ndarray
-            Predicted [f, θ]
-        """
+
         self.eval()
         with torch.no_grad():
             if len(eta.shape) == 1:
@@ -130,23 +81,12 @@ class HybridNanofluidANN(nn.Module):
 
 
 class ANNWithDerivatives(nn.Module):
-    """
-    Extended ANN that can compute derivatives using automatic differentiation
-    Useful for computing f', f'', θ', etc.
-    """
     
     def __init__(self, base_model: HybridNanofluidANN):
         super(ANNWithDerivatives, self).__init__()
         self.model = base_model
     
     def forward(self, eta: torch.Tensor) -> dict:
-        """
-        Forward pass with derivative computation
-        
-        Returns:
-        --------
-        dict with keys: f, theta, fp, fpp, thetap
-        """
         eta.requires_grad_(True)
         
         # Forward pass

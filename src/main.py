@@ -1,7 +1,4 @@
-"""
-ANN Hybrid Nanofluid - Main Entry Point
-Unified interface for data generation, training, and evaluation.
-"""
+
 
 import sys
 import argparse

@@ -1,6 +1,3 @@
-"""
-Real-time Visualization Module
-"""
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -8,7 +5,7 @@ import numpy as np
 import torch
 
 class RealTimeVisualizer:
-    """Handles real-time plotting of training progress"""
+
     
     def __init__(self):
         plt.ion()  # Enable interactive mode
@@ -63,7 +60,7 @@ class RealTimeVisualizer:
         plt.tight_layout()
         
     def update_plots(self, epoch, train_loss, val_loss, eta, f_true, f_pred, theta_true, theta_pred, model):
-        """Update all plots with new data"""
+
         
         # Update Loss
         self.epochs.append(epoch)
@@ -117,7 +114,7 @@ class RealTimeVisualizer:
 
 
 def plot_training_history(history: dict, save_path: str = None):
-    """Plot training and validation loss"""
+
     fig, ax = plt.subplots(1, 1, figsize=(10, 6))
     
     epochs = range(1, len(history['train_loss']) + 1)

@@ -1,7 +1,4 @@
-"""
-Dataset Generator for ANN Training
-Generates ground-truth numerical solutions across parameter combinations
-"""
+
 
 import numpy as np
 import pandas as pd
@@ -16,18 +13,14 @@ from src.solver.ode_solver import HybridNanofluidSolver
 
 
 class DatasetGenerator:
-    """
-    Generates training dataset by solving ODE system for multiple parameter combinations
-    """
+
     
     def __init__(self, output_dir: str = "data"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True, parents=True)
         
     def generate_parameter_grid(self) -> list:
-        """
-        Generate parameter combinations from config
-        """
+
         from src import config
         
         # Use itertools.product to generate all combinations
@@ -48,13 +41,7 @@ class DatasetGenerator:
         return param_combinations
     
     def solve_single_case(self, params: dict, case_id: int) -> pd.DataFrame:
-        """
-        Solve ODE for a single parameter combination
-        
-        Returns:
-        --------
-        DataFrame with columns: eta, f, fp, fpp, theta, thetap, M, Nr, Nh, lam, beta, Pr, n
-        """
+
         solver = HybridNanofluidSolver(params)
         eta, solution = solver.solve(verbose=False)
         
@@ -90,13 +77,7 @@ class DatasetGenerator:
         return df
     
     def generate_dataset(self, filename: str = "training_data.csv") -> pd.DataFrame:
-        """
-        Generate complete dataset for all parameter combinations
-        
-        Returns:
-        --------
-        DataFrame with all solutions concatenated
-        """
+
         param_combinations = self.generate_parameter_grid()
         
         print(f"Generating dataset with {len(param_combinations)} parameter combinations...")
@@ -139,9 +120,7 @@ class DatasetGenerator:
             return None
     
     def generate_test_cases(self, n_cases: int = 10, filename: str = "test_data.csv") -> pd.DataFrame:
-        """
-        Generate additional test cases with random parameters for validation
-        """
+
         print(f"\nGenerating {n_cases} random test cases...")
         
         np.random.seed(42)
@@ -180,7 +159,7 @@ class DatasetGenerator:
 
 
 def main():
-    """Main execution"""
+
     print("=" * 70)
     print("ANN Hybrid Nanofluid - Dataset Generator")
     print("=" * 70)

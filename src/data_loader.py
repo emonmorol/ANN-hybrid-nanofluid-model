@@ -1,6 +1,4 @@
-"""
-Data Loading and Preprocessing Module
-"""
+
 
 import torch
 import numpy as np
@@ -15,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src import config
 
 class DataLoader:
-    """Load and preprocess training data"""
+
     
     def __init__(self, data_path: str):
         self.data_path = Path(data_path)
@@ -24,13 +22,7 @@ class DataLoader:
         self.scaler_theta = MinMaxScaler()
         
     def load_data(self, normalize: bool = True) -> dict:
-        """
-        Load and preprocess data from CSV
-        
-        Returns:
-        --------
-        dict with train/val/test splits
-        """
+
         print("Loading dataset...")
         df = pd.read_csv(self.data_path)
         
@@ -84,7 +76,7 @@ class DataLoader:
         }
     
     def save_scalers(self, output_dir: str):
-        """Save scalers for later use"""
+
         output_dir = Path(output_dir)
         output_dir.mkdir(exist_ok=True, parents=True)
         

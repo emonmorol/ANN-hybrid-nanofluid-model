@@ -1,6 +1,4 @@
-"""
-Central Configuration for ANN Hybrid Nanofluid Project
-"""
+
 
 from pathlib import Path
 
@@ -58,9 +56,8 @@ MODEL_PARAMS = {
 # ==========================================
 TRAIN_PARAMS = {
     'epochs': 100,
-    'batch_size': 'full',  # 'full' or int
-    'learning_rate': 1.0,  # For L-BFGS
-    'optimizer': 'lbfgs',  # 'lbfgs', 'adam', 'lm_custom'
+    'batch_size': 1000,  # Batch size for LM optimizer
+    'optimizer': 'lm_custom',  # Only lm_custom is supported
     'early_stopping_patience': 20,
     'test_split': 0.1,
     'val_split': 0.1
