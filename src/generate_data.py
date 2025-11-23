@@ -11,8 +11,8 @@ from tqdm import tqdm
 import itertools
 
 # Add parent directory to path
-sys.path.append(str(Path(__file__).parent))
-from solver.ode_solver import HybridNanofluidSolver
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.solver.ode_solver import HybridNanofluidSolver
 
 
 class DatasetGenerator:
@@ -26,46 +26,23 @@ class DatasetGenerator:
         
     def generate_parameter_grid(self) -> list:
         """
-        Generate parameter combinations as specified in manuscript
-        
-        Parameter ranges:
-        - M: [0.5, 1.0, 2.0]
-        - Nr: [0.2, 0.5, 1.0]
-        - Nh: [0.2, 0.5, 1.0]
-        - lam: [0.5, 1.0, 2.0]
-        - beta: [0.1]
-        - Pr: [6.2] (fixed for water-based nanofluid)
-        - n: [1.0] (fixed)
+        Generate parameter combinations from config
         """
-        M_values = [0.5, 1.0, 2.0]
-        Nr_values = [0.2, 0.5, 1.0]
-        Nh_values = [0.2, 0.5, 1.0]
-        lam_values = [0.5, 1.0, 2.0]
-        beta_values = [0.1]
-        Pr_values = [6.2]
-        n_values = [1.0]
-        Tr_values = [1.5]
-        As_values = [1.0]
+        from src import config
+        
+        # Use itertools.product to generate all combinations
+        keys = config.PARAM_RANGES.keys()
+        values = config.PARAM_RANGES.values()
         
         param_combinations = []
         
-        for M, Nr, Nh, lam, beta, Pr, n, Tr, As in itertools.product(
-            M_values, Nr_values, Nh_values, lam_values, beta_values, 
-            Pr_values, n_values, Tr_values, As_values
-        ):
-            params = {
-                'M': M,
-                'Nr': Nr,
-                'Nh': Nh,
-                'lam': lam,
-                'beta': beta,
-                'Pr': Pr,
-                'n': n,
-                'Tr': Tr,
-                'As': As,
-                'eta_max': 10.0,
-                'n_points': 400
-            }
+        for combination in itertools.product(*values):
+            params = dict(zip(keys, combination))
+            
+            # Add solver settings
+            params['eta_max'] = config.ETA_MAX
+            params['n_points'] = config.N_POINTS
+            
             param_combinations.append(params)
         
         return param_combinations

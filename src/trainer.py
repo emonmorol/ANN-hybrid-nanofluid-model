@@ -1,112 +1,25 @@
 """
-Training Pipeline for ANN Hybrid Nanofluid Model
-Implements training, validation, and testing with LM optimizer
+Model Training Module
 """
 
 import torch
-import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import pandas as pd
-from pathlib import Path
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-import pickle
-from tqdm import tqdm
 import time
+import gc
+import sys
+import matplotlib.pyplot as plt
+from pathlib import Path
 
-from models.ann import HybridNanofluidANN, ANNWithDerivatives
-from models.lm_optimizer import LevenbergMarquardtOptimizer, SimplifiedLMOptimizer
-
-
-class DataLoader:
-    """Load and preprocess training data"""
-    
-    def __init__(self, data_path: str):
-        self.data_path = Path(data_path)
-        self.scaler_eta = MinMaxScaler()
-        self.scaler_f = MinMaxScaler()
-        self.scaler_theta = MinMaxScaler()
-        
-    def load_data(self, normalize: bool = True) -> dict:
-        """
-        Load and preprocess data from CSV
-        
-        Returns:
-        --------
-        dict with train/val/test splits
-        """
-        print("Loading dataset...")
-        df = pd.read_csv(self.data_path)
-        
-        print(f"  Total samples: {len(df)}")
-        print(f"  Unique cases: {df['case_id'].nunique()}")
-        
-        # Extract features and targets
-        eta = df['eta'].values.reshape(-1, 1)
-        f = df['f'].values.reshape(-1, 1)
-        theta = df['theta'].values.reshape(-1, 1)
-        
-        # Normalize η to [0, 1]
-        if normalize:
-            eta_normalized = self.scaler_eta.fit_transform(eta)
-            f_normalized = self.scaler_f.fit_transform(f)
-            theta_normalized = self.scaler_theta.fit_transform(theta)
-        else:
-            eta_normalized = eta
-            f_normalized = f
-            theta_normalized = theta
-        
-        # Combine targets
-        targets = np.hstack([f_normalized, theta_normalized])
-        
-        # Split data: 80% train, 10% val, 10% test
-        X_train, X_temp, y_train, y_temp = train_test_split(
-            eta_normalized, targets, test_size=0.2, random_state=42
-        )
-        
-        X_val, X_test, y_val, y_test = train_test_split(
-            X_temp, y_temp, test_size=0.5, random_state=42
-        )
-        
-        print(f"  Training samples: {len(X_train)}")
-        print(f"  Validation samples: {len(X_val)}")
-        print(f"  Test samples: {len(X_test)}")
-        
-        return {
-            'X_train': torch.FloatTensor(X_train),
-            'y_train': torch.FloatTensor(y_train),
-            'X_val': torch.FloatTensor(X_val),
-            'y_val': torch.FloatTensor(y_val),
-            'X_test': torch.FloatTensor(X_test),
-            'y_test': torch.FloatTensor(y_test),
-            'eta_raw': eta,
-            'f_raw': f,
-            'theta_raw': theta
-        }
-    
-    def save_scalers(self, output_dir: str):
-        """Save scalers for later use"""
-        output_dir = Path(output_dir)
-        output_dir.mkdir(exist_ok=True, parents=True)
-        
-        with open(output_dir / 'scaler_eta.pkl', 'wb') as f:
-            pickle.dump(self.scaler_eta, f)
-        with open(output_dir / 'scaler_f.pkl', 'wb') as f:
-            pickle.dump(self.scaler_f, f)
-        with open(output_dir / 'scaler_theta.pkl', 'wb') as f:
-            pickle.dump(self.scaler_theta, f)
-        
-        print(f"✓ Scalers saved to {output_dir}")
-
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.models.lm_optimizer import LevenbergMarquardtOptimizer, SimplifiedLMOptimizer
+from src.visualizer import RealTimeVisualizer
 
 class Trainer:
     """Training manager for ANN model"""
     
     def __init__(self, model: nn.Module, optimizer_type: str = 'lm_custom',
-                 device: str = 'cpu'):
+                 device: str = 'cpu', visualize: bool = False):
         """
         Initialize trainer
         
@@ -118,10 +31,17 @@ class Trainer:
             'lm_custom' or 'lm_scipy'
         device : str
             'cpu' or 'cuda'
+        visualize : bool
+            Enable real-time visualization
         """
         self.model = model.to(device)
         self.device = device
         self.optimizer_type = optimizer_type
+        self.visualize = visualize
+        
+        if self.visualize:
+            self.visualizer = RealTimeVisualizer()
+            self.iteration_count = 0
         
         # Initialize optimizer
         if optimizer_type == 'lm_custom':
@@ -197,13 +117,18 @@ class Trainer:
         
         return loss
 
-    def train_epoch_lbfgs(self, X_train: torch.Tensor, y_train: torch.Tensor) -> float:
+    def train_epoch_lbfgs(self, X_train: torch.Tensor, y_train: torch.Tensor, 
+                         X_val: torch.Tensor = None, y_val: torch.Tensor = None) -> float:
         """
         Train one epoch using L-BFGS optimizer (Full Batch)
         """
         self.model.train()
         X_train = X_train.to(self.device)
         y_train = y_train.to(self.device)
+        
+        if self.visualize and X_val is not None:
+            X_vis = X_val.cpu().numpy()
+            y_vis = y_val.cpu().numpy()
         
         # Define closure for L-BFGS (re-evaluates loss)
         def closure():
@@ -214,6 +139,33 @@ class Trainer:
             
             # Optional: Print progress inside the step for visibility
             print(f"\r    L-BFGS Loss: {loss.item():.6f}", end="")
+            
+            if self.visualize and X_val is not None:
+                self.iteration_count += 1
+                if self.iteration_count % 5 == 0:
+                    with torch.no_grad():
+                        val_pred = self.model(X_val.to(self.device))
+                        val_loss = nn.MSELoss()(val_pred, y_val.to(self.device)).item()
+                        pred_np = val_pred.cpu().numpy()
+                        
+                        self.visualizer.update_plots(
+                            self.iteration_count,
+                            loss.item(),
+                            val_loss,
+                            X_vis,
+                            y_vis[:, 0],
+                            pred_np[:, 0],
+                            y_vis[:, 1],
+                            pred_np[:, 1],
+                            self.model
+                        )
+                    
+                    # Memory Management
+                    if self.iteration_count % 50 == 0:
+                        gc.collect()
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+            
             return loss
 
         # Perform optimization step
@@ -297,7 +249,7 @@ class Trainer:
                 train_loss = self.train_epoch_scipy(X_train, y_train, max_nfev=50)
             elif self.optimizer_type == 'lbfgs':
                 # L-BFGS uses full batch
-                train_loss = self.train_epoch_lbfgs(X_train, y_train)
+                train_loss = self.train_epoch_lbfgs(X_train, y_train, X_val, y_val)
             else:
                 train_loss = self.train_epoch_standard(X_train, y_train, batch_size=batch_size)
             
@@ -398,103 +350,3 @@ class Trainer:
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.history = checkpoint['history']
         print(f"✓ Model loaded from {path}")
-
-
-def plot_training_history(history: dict, save_path: str = None):
-    """Plot training and validation loss"""
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-    
-    epochs = range(1, len(history['train_loss']) + 1)
-    ax.plot(epochs, history['train_loss'], 'b-', label='Training Loss', linewidth=2)
-    ax.plot(epochs, history['val_loss'], 'r-', label='Validation Loss', linewidth=2)
-    
-    ax.set_xlabel('Epoch', fontsize=12)
-    ax.set_ylabel('MSE Loss', fontsize=12)
-    ax.set_title('Training History', fontsize=14, fontweight='bold')
-    ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3)
-    ax.set_yscale('log')
-    
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"✓ Training history plot saved to {save_path}")
-    
-    plt.close()
-
-
-def main():
-    """Main training execution"""
-    print("=" * 70)
-    print("ANN Hybrid Nanofluid - Training Pipeline")
-    print("=" * 70)
-    
-    # Configuration
-    DATA_PATH = "data/training_data.csv"
-    MODEL_DIR = Path("models/checkpoints")
-    PLOT_DIR = Path("plots")
-    
-    MODEL_DIR.mkdir(exist_ok=True, parents=True)
-    PLOT_DIR.mkdir(exist_ok=True, parents=True)
-    
-    # Load data
-    data_loader = DataLoader(DATA_PATH)
-    data = data_loader.load_data(normalize=True)
-    data_loader.save_scalers(MODEL_DIR)
-    
-    # Create model
-    print("\nInitializing model...")
-    model = HybridNanofluidANN(
-        input_dim=1,
-        hidden_dim=30,
-        num_hidden_layers=9,
-        output_dim=2
-    )
-    print(model.get_architecture_summary())
-    
-    # Create trainer
-    # Create trainer
-    # Use 'lbfgs' for high-precision convergence
-    print("Using L-BFGS optimizer...")
-    trainer = Trainer(model, optimizer_type='lbfgs', device='cpu')
-    
-    # Train model
-    # L-BFGS prefers full batch training
-    full_batch_size = len(data['X_train'])
-    print(f"Training with full batch size: {full_batch_size}")
-    
-    history = trainer.train(
-        data['X_train'], data['y_train'],
-        data['X_val'], data['y_val'],
-        epochs=100,
-        batch_size=full_batch_size,
-        early_stopping_patience=20
-    )
-    
-    # Evaluate on test set
-    print("\nEvaluating on test set...")
-    metrics = trainer.evaluate(data['X_test'], data['y_test'])
-    
-    print("\nTest Set Metrics:")
-    print(f"  MSE (overall): {metrics['mse']:.6e}")
-    print(f"  MAE (overall): {metrics['mae']:.6e}")
-    print(f"  Max Error: {metrics['max_error']:.6e}")
-    print(f"  MSE (f): {metrics['mse_f']:.6e}")
-    print(f"  MSE (θ): {metrics['mse_theta']:.6e}")
-    print(f"  MAE (f): {metrics['mae_f']:.6e}")
-    print(f"  MAE (θ): {metrics['mae_theta']:.6e}")
-    
-    # Save model
-    trainer.save_model(MODEL_DIR / "best_model.pth")
-    
-    # Plot training history
-    plot_training_history(history, save_path=PLOT_DIR / "training_history.png")
-    
-    print("\n" + "=" * 70)
-    print("Training complete!")
-    print("=" * 70)
-
-
-if __name__ == "__main__":
-    main()

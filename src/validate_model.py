@@ -12,9 +12,11 @@ import torch
 import pickle
 from typing import Dict, List, Tuple
 from scipy import stats
+import sys
 
-from models.ann import HybridNanofluidANN
-from solver.ode_solver import HybridNanofluidSolver
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.models.ann import HybridNanofluidANN
+from src.solver.ode_solver import HybridNanofluidSolver
 
 
 class ModelValidator:

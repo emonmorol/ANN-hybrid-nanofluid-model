@@ -3,8 +3,6 @@ __pycache__/
 *$py.class
 *.so
 
-docs/
-visualize_progress/
 
 .Python
 build/
@@ -68,8 +66,7 @@ data/processed/
 *.h5
 *.hdf5
 
-models/checkpoints/
-models/saved/
+outputs/models/
 *.pth
 *.pt
 *.ckpt
@@ -82,7 +79,6 @@ logs/
 *.log
 
 figures/generated/
-plots/
 
 docs/_build/
 docs/.doctrees/
