@@ -24,13 +24,14 @@ BEST_MODEL_PATH = MODEL_DIR / "best_model.pth"
 # ==========================================
 # Physics Parameters (Data Generation)
 # ==========================================
-# Expanded ranges for better generalization
+# Reduced ranges for faster training (Total: ~48k data points)
+# 5 × 4 × 3 × 2 × 2 × 1 × 1 × 1 × 1 = 120 combinations × 400 points = 48,000 rows
 PARAM_RANGES = {
-    'M': [0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0],      # Magnetic parameter
-    'Nr': [0.1, 0.3, 0.5, 0.7, 1.0, 1.5],          # Radiation parameter
-    'Nh': [0.1, 0.3, 0.5, 0.7, 1.0, 1.5],          # Heat generation parameter
-    'lam': [0.1, 0.5, 1.0, 1.5, 2.0, 2.5],         # Mixed convection parameter
-    'beta': [0.1, 0.2, 0.3],                       # Casson parameter
+    'M': [0.1, 0.5, 1.0, 2.0, 3.0],                # Magnetic parameter (5 values)
+    'Nr': [0.1, 0.5, 1.0, 1.5],                    # Radiation parameter (4 values)
+    'Nh': [0.1, 0.5, 1.0],                         # Heat generation parameter (3 values)
+    'lam': [0.5, 2.0],                             # Mixed convection parameter (2 values)
+    'beta': [0.1, 0.3],                            # Casson parameter (2 values)
     'Pr': [6.2],                                   # Prandtl number (Water)
     'n': [1.0],                                    # Power law index
     'Tr': [1.5],                                   # Temperature ratio

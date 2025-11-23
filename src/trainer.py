@@ -265,10 +265,12 @@ class Trainer:
             
             # Print progress
             if (epoch + 1) % 10 == 0 or epoch == 0:
-                print(f"Epoch {epoch+1:3d}/{epochs} | "
+                print()
+                print(f"    Epoch {epoch+1:3d}/{epochs} | "
                       f"Train Loss: {train_loss:.6f} | "
                       f"Val Loss: {val_loss:.6f} | "
                       f"Time: {epoch_time:.2f}s")
+                print("=" * 70)
             
             # Early stopping
             if val_loss < best_val_loss:
