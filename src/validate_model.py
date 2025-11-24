@@ -1,5 +1,4 @@
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,20 +8,25 @@ import pickle
 from typing import Dict, List, Tuple
 from scipy import stats
 import sys
+import seaborn as sns
 
+# Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.models.ann import HybridNanofluidANN
 from src.solver.ode_solver import HybridNanofluidSolver
+from src import config
 
 
 class ModelValidator:
-
     
     def __init__(self, model_path: str, scaler_dir: str):
-
         # Load model
-        self.model = HybridNanofluidANN(input_dim=1, hidden_dim=30, 
-                                        num_hidden_layers=9, output_dim=2)
+        self.model = HybridNanofluidANN(
+            input_dim=config.MODEL_PARAMS['input_dim'],
+            hidden_dim=config.MODEL_PARAMS['hidden_dim'],
+            num_hidden_layers=config.MODEL_PARAMS['num_hidden_layers'],
+            output_dim=config.MODEL_PARAMS['output_dim']
+        )
         checkpoint = torch.load(model_path)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.eval()
@@ -39,7 +43,6 @@ class ModelValidator:
         print("✓ Model and scalers loaded for validation")
     
     def predict(self, eta: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-
         # Normalize eta
         eta_normalized = self.scaler_eta.transform(eta.reshape(-1, 1))
         
@@ -55,7 +58,6 @@ class ModelValidator:
         return f, theta
     
     def compute_error_metrics(self, y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
-
         # Absolute errors
         abs_error = np.abs(y_true - y_pred)
         
@@ -100,7 +102,6 @@ class ModelValidator:
         }
     
     def validate_single_case(self, params: Dict, verbose: bool = True) -> Dict:
-
         # Solve numerically
         solver = HybridNanofluidSolver(params)
         eta_num, solution_num = solver.solve(verbose=False)
@@ -148,7 +149,6 @@ class ModelValidator:
         }
     
     def validate_multiple_cases(self, test_cases: List[Dict]) -> pd.DataFrame:
-
         print("\n" + "="*70)
         print("VALIDATING MULTIPLE TEST CASES")
         print("="*70)
@@ -209,86 +209,78 @@ class ModelValidator:
         return summary_df
     
     def plot_validation_results(self, result: Dict, save_path: str = None):
-
         eta = result['eta']
         f_num = result['f_numerical']
         f_ann = result['f_ann']
         theta_num = result['theta_numerical']
         theta_ann = result['theta_ann']
         
+        # Set professional style
+        sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)
+        colors = sns.color_palette("deep")
+        
         # Create figure with 6 subplots
-        fig = plt.figure(figsize=(16, 10))
-        gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
+        fig = plt.figure(figsize=(18, 12))
+        gs = fig.add_gridspec(3, 3, hspace=0.35, wspace=0.3)
         
         # 1. f(η) comparison
         ax1 = fig.add_subplot(gs[0, 0])
-        ax1.plot(eta, f_num, 'b-', linewidth=2, label='Numerical')
-        ax1.plot(eta, f_ann, 'r--', linewidth=2, label='ANN')
-        ax1.set_xlabel(r'$\eta$', fontsize=11)
-        ax1.set_ylabel(r'$f(\eta)$', fontsize=11)
-        ax1.set_title(r'$f(\eta)$ Comparison', fontsize=12, fontweight='bold')
-        ax1.legend(fontsize=9)
-        ax1.grid(True, alpha=0.3)
+        sns.lineplot(x=eta, y=f_num, ax=ax1, color=colors[0], label='Numerical', linewidth=2.5)
+        sns.lineplot(x=eta, y=f_ann, ax=ax1, color=colors[3], label='ANN', linestyle='--', linewidth=2.5)
+        ax1.set_xlabel(r'$\eta$', fontweight='bold')
+        ax1.set_ylabel(r'$f(\eta)$', fontweight='bold')
+        ax1.set_title(r'$f(\eta)$ Comparison', fontweight='bold')
+        ax1.legend()
         
         # 2. θ(η) comparison
         ax2 = fig.add_subplot(gs[0, 1])
-        ax2.plot(eta, theta_num, 'b-', linewidth=2, label='Numerical')
-        ax2.plot(eta, theta_ann, 'r--', linewidth=2, label='ANN')
-        ax2.set_xlabel(r'$\eta$', fontsize=11)
-        ax2.set_ylabel(r'$\theta(\eta)$', fontsize=11)
-        ax2.set_title(r'$\theta(\eta)$ Comparison', fontsize=12, fontweight='bold')
-        ax2.legend(fontsize=9)
-        ax2.grid(True, alpha=0.3)
+        sns.lineplot(x=eta, y=theta_num, ax=ax2, color=colors[0], label='Numerical', linewidth=2.5)
+        sns.lineplot(x=eta, y=theta_ann, ax=ax2, color=colors[3], label='ANN', linestyle='--', linewidth=2.5)
+        ax2.set_xlabel(r'$\eta$', fontweight='bold')
+        ax2.set_ylabel(r'$\theta(\eta)$', fontweight='bold')
+        ax2.set_title(r'$\theta(\eta)$ Comparison', fontweight='bold')
+        ax2.legend()
         
         # 3. Absolute errors
         ax3 = fig.add_subplot(gs[0, 2])
         error_f = np.abs(f_num - f_ann)
         error_theta = np.abs(theta_num - theta_ann)
-        ax3.semilogy(eta, error_f, 'g-', linewidth=2, label=r'$|f_{num} - f_{ANN}|$')
-        ax3.semilogy(eta, error_theta, 'm-', linewidth=2, label=r'$|\theta_{num} - \theta_{ANN}|$')
-        ax3.set_xlabel(r'$\eta$', fontsize=11)
-        ax3.set_ylabel('Absolute Error (log scale)', fontsize=11)
-        ax3.set_title('Absolute Errors', fontsize=12, fontweight='bold')
-        ax3.legend(fontsize=9)
-        ax3.grid(True, alpha=0.3)
+        sns.lineplot(x=eta, y=error_f, ax=ax3, color='green', label=r'$|Error_f|$', linewidth=1.5)
+        sns.lineplot(x=eta, y=error_theta, ax=ax3, color='orange', label=r'$|Error_\theta|$', linewidth=1.5)
+        ax3.set_yscale('log')
+        ax3.set_xlabel(r'$\eta$', fontweight='bold')
+        ax3.set_ylabel('Absolute Error (Log)', fontweight='bold')
+        ax3.set_title('Error Analysis', fontweight='bold')
+        ax3.legend()
         
         # 4. f scatter plot
         ax4 = fig.add_subplot(gs[1, 0])
-        ax4.scatter(f_num, f_ann, alpha=0.6, s=20)
-        min_val = min(f_num.min(), f_ann.min())
-        max_val = max(f_num.max(), f_ann.max())
-        ax4.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect fit')
-        ax4.set_xlabel(r'$f_{numerical}$', fontsize=11)
-        ax4.set_ylabel(r'$f_{ANN}$', fontsize=11)
-        ax4.set_title(r'$f$ Scatter Plot (R²={:.6f})'.format(result['metrics_f']['R_squared']), 
-                     fontsize=12, fontweight='bold')
-        ax4.legend(fontsize=9)
-        ax4.grid(True, alpha=0.3)
+        sns.scatterplot(x=f_num, y=f_ann, ax=ax4, color=colors[0], alpha=0.6, s=30)
+        # Perfect fit line
+        min_val, max_val = min(f_num.min(), f_ann.min()), max(f_num.max(), f_ann.max())
+        ax4.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Ideal')
+        ax4.set_xlabel(r'$f_{numerical}$', fontweight='bold')
+        ax4.set_ylabel(r'$f_{ANN}$', fontweight='bold')
+        ax4.set_title(r'$f$ Correlation ($R^2$={:.6f})'.format(result['metrics_f']['R_squared']), fontweight='bold')
         
         # 5. θ scatter plot
         ax5 = fig.add_subplot(gs[1, 1])
-        ax5.scatter(theta_num, theta_ann, alpha=0.6, s=20, color='orange')
-        min_val = min(theta_num.min(), theta_ann.min())
-        max_val = max(theta_num.max(), theta_ann.max())
-        ax5.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect fit')
-        ax5.set_xlabel(r'$\theta_{numerical}$', fontsize=11)
-        ax5.set_ylabel(r'$\theta_{ANN}$', fontsize=11)
-        ax5.set_title(r'$\theta$ Scatter Plot (R²={:.6f})'.format(result['metrics_theta']['R_squared']), 
-                     fontsize=12, fontweight='bold')
-        ax5.legend(fontsize=9)
-        ax5.grid(True, alpha=0.3)
+        sns.scatterplot(x=theta_num, y=theta_ann, ax=ax5, color=colors[1], alpha=0.6, s=30)
+        min_val, max_val = min(theta_num.min(), theta_ann.min()), max(theta_num.max(), theta_ann.max())
+        ax5.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Ideal')
+        ax5.set_xlabel(r'$\theta_{numerical}$', fontweight='bold')
+        ax5.set_ylabel(r'$\theta_{ANN}$', fontweight='bold')
+        ax5.set_title(r'$\theta$ Correlation ($R^2$={:.6f})'.format(result['metrics_theta']['R_squared']), fontweight='bold')
         
-        # 6. Error distribution histogram
+        # 6. Error distribution
         ax6 = fig.add_subplot(gs[1, 2])
-        ax6.hist(error_f, bins=30, alpha=0.6, label='f errors', color='green')
-        ax6.hist(error_theta, bins=30, alpha=0.6, label='θ errors', color='magenta')
-        ax6.set_xlabel('Absolute Error', fontsize=11)
-        ax6.set_ylabel('Frequency', fontsize=11)
-        ax6.set_title('Error Distribution', fontsize=12, fontweight='bold')
-        ax6.legend(fontsize=9)
-        ax6.grid(True, alpha=0.3)
+        sns.kdeplot(data=error_f, ax=ax6, fill=True, color='green', label='f error', alpha=0.3)
+        sns.kdeplot(data=error_theta, ax=ax6, fill=True, color='orange', label='θ error', alpha=0.3)
+        ax6.set_xlabel('Absolute Error', fontweight='bold')
+        ax6.set_title('Error Distribution (KDE)', fontweight='bold')
+        ax6.legend()
         
-        # 7. Metrics table for f
+        # 7. Metrics table
         ax7 = fig.add_subplot(gs[2, :])
         ax7.axis('off')
         
@@ -297,33 +289,26 @@ class ModelValidator:
         
         table_data = [
             ['Metric', 'f(η)', 'θ(η)'],
-            ['MSE', f"{metrics_f['MSE']:.6e}", f"{metrics_theta['MSE']:.6e}"],
-            ['RMSE', f"{metrics_f['RMSE']:.6e}", f"{metrics_theta['RMSE']:.6e}"],
-            ['MAE', f"{metrics_f['MAE']:.6e}", f"{metrics_theta['MAE']:.6e}"],
-            ['Max Abs Error', f"{metrics_f['Max_Abs_Error']:.6e}", f"{metrics_theta['Max_Abs_Error']:.6e}"],
-            ['Mean Rel Error (%)', f"{metrics_f['Mean_Relative_Error_%']:.4f}", f"{metrics_theta['Mean_Relative_Error_%']:.4f}"],
-            ['R²', f"{metrics_f['R_squared']:.8f}", f"{metrics_theta['R_squared']:.8f}"],
-            ['Correlation', f"{metrics_f['Correlation']:.8f}", f"{metrics_theta['Correlation']:.8f}"]
+            ['MSE', f"{metrics_f['MSE']:.2e}", f"{metrics_theta['MSE']:.2e}"],
+            ['MAE', f"{metrics_f['MAE']:.2e}", f"{metrics_theta['MAE']:.2e}"],
+            ['Max Error', f"{metrics_f['Max_Abs_Error']:.2e}", f"{metrics_theta['Max_Abs_Error']:.2e}"],
+            ['R²', f"{metrics_f['R_squared']:.6f}", f"{metrics_theta['R_squared']:.6f}"]
         ]
         
-        table = ax7.table(cellText=table_data, cellLoc='center', loc='center',
-                         colWidths=[0.3, 0.35, 0.35])
+        table = ax7.table(cellText=table_data, cellLoc='center', loc='center', colWidths=[0.2, 0.3, 0.3])
         table.auto_set_font_size(False)
-        table.set_fontsize(10)
+        table.set_fontsize(12)
         table.scale(1, 2)
         
-        # Style header row
-        for i in range(3):
-            table[(0, i)].set_facecolor('#4CAF50')
-            table[(0, i)].set_text_props(weight='bold', color='white')
+        # Style table
+        for (row, col), cell in table.get_celld().items():
+            if row == 0:
+                cell.set_facecolor(colors[0])
+                cell.set_text_props(color='white', weight='bold')
+            elif row % 2 == 0:
+                cell.set_facecolor('#f2f2f2')
         
-        # Alternate row colors
-        for i in range(1, len(table_data)):
-            for j in range(3):
-                if i % 2 == 0:
-                    table[(i, j)].set_facecolor('#f0f0f0')
-        
-        plt.suptitle('Model Validation Results', fontsize=16, fontweight='bold', y=0.98)
+        plt.suptitle('Model Validation Results', fontsize=20, fontweight='bold', y=0.98)
         
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -342,8 +327,8 @@ def main():
     
     # Initialize validator
     validator = ModelValidator(
-        model_path="models/checkpoints/best_model.pth",
-        scaler_dir="models/checkpoints"
+        model_path=config.BEST_MODEL_PATH,
+        scaler_dir=config.SCALER_DIR
     )
     
     # Base parameters
@@ -368,7 +353,7 @@ def main():
     result = validator.validate_single_case(base_params, verbose=True)
     
     # Plot results
-    output_dir = Path("plots")
+    output_dir = config.PLOT_DIR
     output_dir.mkdir(exist_ok=True, parents=True)
     validator.plot_validation_results(result, save_path=output_dir / "validation_single_case.png")
     

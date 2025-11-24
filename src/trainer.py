@@ -31,6 +31,12 @@ class Trainer:
         # Initialize optimizer
         if optimizer_type == 'lm_custom':
             self.optimizer = LevenbergMarquardtOptimizer(model)
+        elif optimizer_type == 'lm_scipy':
+            self.optimizer = SimplifiedLMOptimizer(model)
+        elif optimizer_type == 'adam':
+            self.optimizer = optim.Adam(model.parameters(), lr=0.001)
+        elif optimizer_type == 'lbfgs':
+            self.optimizer = optim.LBFGS(model.parameters(), lr=0.1, max_iter=20)
         else:
             raise ValueError(f"Unknown optimizer type: {optimizer_type}")
         
@@ -101,6 +107,35 @@ class Trainer:
         
         return total_loss / n_batches
     
+    def train_epoch_scipy(self, X_train: torch.Tensor, y_train: torch.Tensor,
+                         batch_size: int = 100) -> float:
+        
+        self.model.train()
+        total_loss = 0.0
+        n_batches = 0
+        
+        # Process in batches
+        n_samples = len(X_train)
+        indices = torch.randperm(n_samples)
+        
+        for i in range(0, n_samples, batch_size):
+            batch_indices = indices[i:i + batch_size]
+            X_batch = X_train[batch_indices]
+            y_batch = y_train[batch_indices]
+            
+            # Use scipy optimizer on this batch
+            result = self.optimizer.optimize(X_batch, y_batch, max_nfev=10, verbose=0)
+            batch_loss = result['cost'] * 2  # Convert cost to MSE
+            
+            total_loss += batch_loss
+            n_batches += 1
+            
+            # Print progress every 100 batches
+            if n_batches % 100 == 0:
+                print(f"    Processed {n_batches} batches, current loss: {batch_loss:.6f}", end='\r')
+        
+        return total_loss / n_batches
+    
     def validate(self, X_val: torch.Tensor, y_val: torch.Tensor) -> float:
 
         self.model.eval()
@@ -131,7 +166,11 @@ class Trainer:
             if self.optimizer_type == 'lm_custom':
                 train_loss = self.train_epoch_custom(X_train, y_train, 
                                                      batch_size=batch_size, max_steps=5)
+            elif self.optimizer_type == 'lm_scipy':
+                # Use scipy optimizer with batching
+                train_loss = self.train_epoch_scipy(X_train, y_train, batch_size=batch_size)
             else:
+                # Use standard PyTorch optimizers (Adam, LBFGS, etc.)
                 train_loss = self.train_epoch_standard(X_train, y_train, batch_size=batch_size)
             
             # Validate
@@ -143,6 +182,10 @@ class Trainer:
             self.history['train_loss'].append(train_loss)
             self.history['val_loss'].append(val_loss)
             self.history['epoch_time'].append(epoch_time)
+            
+            # Update visualizer
+            if self.visualize:
+                self.visualizer.update(epoch + 1, train_loss, val_loss, self.model)
             
             # Print progress
             if (epoch + 1) % 10 == 0 or epoch == 0:

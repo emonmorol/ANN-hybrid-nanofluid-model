@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import torch
 from pathlib import Path
 
 # Add parent directory to path for imports
@@ -114,9 +115,31 @@ def run_clean():
             
     print("\nCleanup complete. You can now start fresh.")
 
+def run_regenerate_plot():
+    print("\nRegenerating training history plot...")
+    
+    # Check if model exists
+    if not config.BEST_MODEL_PATH.exists():
+        print(f"Error: Model checkpoint not found at {config.BEST_MODEL_PATH}")
+        print("Please train the model first using 'python src/main.py train'")
+        return
+    
+    # Load the saved model checkpoint
+    checkpoint = torch.load(config.BEST_MODEL_PATH)
+    
+    # Extract training history
+    history = checkpoint['history']
+    
+    # Regenerate the plot with the enhanced design
+    save_path = config.PLOT_DIR / "training_history.png"
+    plot_training_history(history, save_path=save_path)
+    
+    print(f"\n✓ Training history plot regenerated successfully!")
+    print(f"  Location: {save_path}")
+
 def main():
     parser = argparse.ArgumentParser(description="ANN Hybrid Nanofluid Pipeline")
-    parser.add_argument('action', choices=['generate', 'train', 'all', 'clean'], 
+    parser.add_argument('action', choices=['generate', 'train', 'all', 'clean', 'regenerate'], 
                         help="Action to perform")
     
     if len(sys.argv) == 1:
@@ -131,7 +154,10 @@ def main():
         run_training(visualize=True)
     elif args.action == 'clean':
         run_clean()
+    elif args.action == 'regenerate':
+        run_regenerate_plot()
     elif args.action == 'all':
+        run_clean()
         run_data_generation()
         run_training(visualize=True)
 

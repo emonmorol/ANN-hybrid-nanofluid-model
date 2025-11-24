@@ -38,7 +38,7 @@ class HybridNanofluidANN(nn.Module):
         self._initialize_weights()
         
     def _initialize_weights(self):
-        """Initialize weights using Xavier uniform initialization"""
+
         for module in self.modules():
             if isinstance(module, nn.Linear):
                 nn.init.xavier_uniform_(module.weight)
@@ -60,11 +60,11 @@ class HybridNanofluidANN(nn.Module):
             return output.numpy()
     
     def count_parameters(self) -> int:
-        """Count total trainable parameters"""
+
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
     def get_architecture_summary(self) -> str:
-        """Get human-readable architecture summary"""
+
         summary = []
         summary.append("=" * 60)
         summary.append("ANN Architecture Summary")
@@ -111,7 +111,7 @@ class ANNWithDerivatives(nn.Module):
 
 
 def test_model():
-    """Test the ANN model"""
+
     print("Testing ANN Model")
     print("=" * 60)
     

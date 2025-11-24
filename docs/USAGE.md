@@ -1,16 +1,24 @@
-# Usage Guide
+# How to Use This Repo 🛠️
 
-## Quick Reference
+Welcome to the comprehensive user guide! This document will walk you through everything from generating your first dataset to training, visualizing, and validating your model.
+
+## ⚡ Quick Reference
+
+If you just want the commands, here they are:
 
 ```bash
-# Complete workflow
+# Complete workflow (The "Easy Button")
 python src/main.py all
 
-# Individual steps
-python src/main.py generate    # Generate training data
-python src/main.py train       # Train model
-python src/validate_model.py   # Validate model
-python src/main.py clean       # Clean generated files
+# Individual pipeline steps
+python src/main.py generate    # 1. Generate training data from physics
+python src/main.py train       # 2. Train the neural network
+python src/main.py regenerate  # 3. Recreate training plots from checkpoint
+python src/main.py clean       # 4. Clean up all generated files
+
+# Standalone analysis scripts (require trained model)
+python src/visualizer.py       # Create prediction comparison plots
+python src/validate_model.py   # Perform rigorous validation
 ```
 
 ---
@@ -58,7 +66,7 @@ python src/main.py train
 - Loads training data
 - Normalizes inputs/outputs
 - Initializes ANN model
-- Trains using L-BFGS or LM optimizer
+- Trains using L-BFGS or LM or Adam optimizer
 - Saves best model to `models/checkpoints/best_model.pth`
 - Generates training history plot
 
@@ -144,6 +152,81 @@ Parameters: {'M': 1.0, 'Nr': 0.5, 'Nh': 0.5, ...}
 **Generated files:**
 - `outputs/plots/validation_single_case.png`: Detailed validation plots
 - `outputs/plots/validation_summary.csv`: Metrics table (manuscript-ready)
+
+---
+
+### 4. Standalone Visualization
+
+**Command:**
+```bash
+python src/visualizer.py
+```
+
+**What it does:**
+- Loads the trained model and scalers
+- Loads test data cases
+- Generates predictions for each test case
+- Creates comprehensive comparison plots
+- Shows model predictions vs. numerical solutions
+
+**Expected output:**
+```
+Loading model from: outputs/models/best_model.pth
+Loading test data from: data/test_data.csv
+Found 10 test cases
+
+Processing test case 1/10...
+Processing test case 2/10...
+...
+Processing test case 10/10...
+
+✓ Visualization saved to: outputs/plots/model_predictions.png
+
+Overall Metrics:
+  MSE: 2.345e-08
+  MAE: 1.234e-04
+  R²: 0.999998
+```
+
+**Generated files:**
+- `outputs/plots/model_predictions.png`: Multi-panel comparison plots
+
+**When to use:**
+- After training to visualize model performance
+- To create publication-quality figures
+- To compare predictions across multiple test cases
+- When you need detailed visual analysis
+
+---
+
+### 5. Regenerate Training History
+
+**Command:**
+```bash
+python src/main.py regenerate
+```
+
+**What it does:**
+- Loads the saved model checkpoint (which includes training history)
+- Extracts the training and validation loss curves
+- Regenerates the training history plot with current styling
+- Saves the updated plot
+
+**Expected output:**
+```
+Regenerating training history plot...
+
+✓ Training history plot regenerated successfully!
+  Location: outputs/plots/training_history.png
+```
+
+**When to use:**
+- You want to recreate plots with different styling or formatting
+- The original training plot was lost or corrupted
+- You need to adjust plot aesthetics for publication
+- You want to regenerate plots after updating visualization code
+
+**Note:** This command does NOT retrain the model—it only recreates the plot from saved data.
 
 ---
 
@@ -341,20 +424,32 @@ TRAIN_PARAMS = {
 
 ```
 data/
-├── training_data.csv          # Training dataset
-└── test_data.csv              # Test dataset
+├── training_data.csv          # Training dataset (~32,400 samples)
+└── test_data.csv              # Test dataset (10 random cases)
 
 outputs/models/
-├── best_model.pth             # Trained model
-├── scaler_eta.pkl             # Input scaler
-├── scaler_f.pkl               # Output scaler (f)
-└── scaler_theta.pkl           # Output scaler (θ)
+├── best_model.pth             # Trained model with checkpoint data
+├── scaler_eta.pkl             # Input scaler (η normalization)
+├── scaler_f.pkl               # Output scaler (f normalization)
+└── scaler_theta.pkl           # Output scaler (θ normalization)
 
 outputs/plots/
-├── training_history.png       # Loss curves
-├── validation_single_case.png # Validation plots
-└── validation_summary.csv     # Metrics table
+├── training_history.png       # Training/validation loss curves
+├── model_predictions.png      # Prediction comparison plots (from visualizer.py)
+├── validation_single_case.png # Single case validation plots
+└── validation_summary.csv     # Comprehensive metrics table
 ```
+
+**File Descriptions:**
+
+- **`training_data.csv`**: Contains ~32,400 rows with η, f, θ, and all physics parameters
+- **`test_data.csv`**: 10 random test cases for validation
+- **`best_model.pth`**: PyTorch checkpoint including model weights, optimizer state, and training history
+- **`scaler_*.pkl`**: Scikit-learn scalers for input/output normalization (required for predictions)
+- **`training_history.png`**: Loss curves showing model convergence during training
+- **`model_predictions.png`**: Multi-panel plots comparing ANN predictions with numerical solutions
+- **`validation_single_case.png`**: Detailed validation plots for a single parameter set
+- **`validation_summary.csv`**: Table of error metrics (MSE, RMSE, MAE, R², etc.) for all test cases
 
 ---
 
@@ -362,13 +457,15 @@ outputs/plots/
 
 | Command | Description | Time |
 |---------|-------------|------|
-| `python src/main.py generate` | Generate training data | 2-5 min |
+| `python src/main.py generate` | Generate training data from physics | 2-5 min |
 | `python src/main.py train` | Train ANN model | 5-15 min |
-| `python src/validate_model.py` | Validate model | 1-2 min |
-| `python src/main.py all` | Run complete pipeline | 8-22 min |
-| `python src/main.py clean` | Remove generated files | <1 sec |
+| `python src/main.py regenerate` | Recreate training plots from checkpoint | <5 sec |
+| `python src/visualizer.py` | Create prediction comparison plots | 10-30 sec |
+| `python src/validate_model.py` | Validate model with error analysis | 1-2 min |
+| `python src/main.py all` | Run complete pipeline (clean → generate → train) | 8-22 min |
+| `python src/main.py clean` | Remove all generated files | <1 sec |
 
 ---
 
-**Last Updated:** 2025-11-23  
-**Version:** 2.0.0
+**Last Updated:** 2025-11-24  
+**Version:** 2.1.0

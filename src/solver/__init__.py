@@ -1,6 +1,4 @@
-"""
-Solver package for numerical ODE solutions
-"""
+
 
 from .ode_solver import HybridNanofluidSolver
 

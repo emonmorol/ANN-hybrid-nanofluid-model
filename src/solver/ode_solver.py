@@ -8,10 +8,7 @@ warnings.filterwarnings('ignore')
 
 
 class HybridNanofluidSolver:
-
-    
     def __init__(self, params: Dict[str, float]):
-
         self.M = params.get('M', 1.0)
         self.Nr = params.get('Nr', 0.5)
         self.Nh = params.get('Nh', 0.5)
@@ -21,7 +18,7 @@ class HybridNanofluidSolver:
         self.n = params.get('n', 1.0)
         self.Tr = params.get('Tr', 1.5)
         self.As = params.get('As', 1.0)
-        
+
         # Nanofluid property ratios (typical values for hybrid nanofluids)
         self.nu_ratio = params.get('nu_ratio', 1.05)
         self.kappa_ratio = params.get('kappa_ratio', 1.15)
@@ -63,7 +60,6 @@ class HybridNanofluidSolver:
     def boundary_conditions(self, ya: np.ndarray, yb: np.ndarray) -> np.ndarray:
 
         bc = np.zeros(5)
-        
         # Boundary conditions at η = 0
         bc[0] = ya[0]  # f(0) = 0
         bc[1] = ya[1] - (self.lam + self.beta * ya[2])  # f'(0) = lam + β*f''(0)
